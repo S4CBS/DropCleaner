@@ -1,0 +1,7 @@
+{
+  "mod.dropcleaner.name": "Drop Cleaner",
+  "dropcleaner.prefix": "[ClearDrop] ",
+  "dropcleaner.warning": "Dropped items on the ground will be cleared in %s!",
+  "dropcleaner.result": "Cleared %s dropped items (%s stacks).",
+  "dropcleaner.time": "Time until next drop cleanup: %s"
+}

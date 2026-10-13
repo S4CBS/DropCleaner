@@ -1,0 +1,7 @@
+{
+  "mod.dropcleaner.name": "Drop Cleaner",
+  "dropcleaner.prefix": "[Очистка] ",
+  "dropcleaner.warning": "Лежащие на полу предметы будут удалены через %s!",
+  "dropcleaner.result": "Очищено предметов на земле: %s шт. (%s пачек/стаков).",
+  "dropcleaner.time": "До следующей очистки дропа осталось: %s"
+}

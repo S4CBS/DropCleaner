@@ -1,0 +1,24 @@
+modLoader="javafml"
+loaderVersion="[4,)"
+license="MIT"
+
+[[mods]]
+modId="dropcleaner"
+version="1.0.0"
+displayName="Drop Cleaner"
+authors="Alexey"
+description='''Автоматическая периодическая очистка выброшенных на землю предметов (каждые 10 минут) с предупреждениями в чат, защитой ценных вещей и гибким конфигом.'''
+
+[[dependencies.dropcleaner]]
+modId="neoforge"
+type="required"
+versionRange="[21.1.0,)"
+ordering="NONE"
+side="BOTH"
+
+[[dependencies.dropcleaner]]
+modId="minecraft"
+type="required"
+versionRange="[1.21.1,1.21.2)"
+ordering="NONE"
+side="BOTH"
