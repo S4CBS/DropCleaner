@@ -9,6 +9,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.ExperienceOrb;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -58,44 +59,64 @@ public class DropCleanerHandler {
     }
 
     public CleanupResult performCleanup(MinecraftServer server, boolean manual) {
+        return performCleanup(server, manual, false);
+    }
+
+    public CleanupResult performCleanup(MinecraftServer server, boolean manual, boolean forceAll) {
         DropCleanerConfig config = DropCleanerConfig.get();
         int totalItemsRemoved = 0;
         int totalEntitiesRemoved = 0;
-        int minAgeTicks = config.minimumItemAgeSeconds * 20;
+        int totalXpOrbsRemoved = 0;
 
-        List<ItemEntity> toRemove = new ArrayList<>();
+        // При ручной очистке (/clearlag или /cleardrop) возраст предметов НЕ проверяется (0 сек)
+        // — очищаются 100% всех лежащих на земле блоков сразу!
+        // При автоочистке берётся значение из конфига (по умолчанию 0 сек).
+        int minAgeTicks = manual ? 0 : (config.minimumItemAgeSeconds * 20);
+
+        List<Entity> toRemove = new ArrayList<>();
 
         for (ServerLevel level : server.getAllLevels()) {
             toRemove.clear();
             for (Entity entity : level.getAllEntities()) {
-                if (entity instanceof ItemEntity itemEntity && !itemEntity.isRemoved()) {
-                    if (shouldClean(itemEntity, minAgeTicks, config)) {
+                if (entity.isRemoved()) continue;
+
+                if (entity instanceof ItemEntity itemEntity) {
+                    if (forceAll || shouldClean(itemEntity, minAgeTicks, config)) {
                         toRemove.add(itemEntity);
+                    }
+                } else if (entity instanceof ExperienceOrb xpOrb) {
+                    if (forceAll || config.cleanExperienceOrbs) {
+                        toRemove.add(xpOrb);
                     }
                 }
             }
 
-            for (ItemEntity itemEntity : toRemove) {
+            for (Entity entity : toRemove) {
                 totalEntitiesRemoved++;
-                totalItemsRemoved += itemEntity.getItem().getCount();
-                itemEntity.discard();
+                if (entity instanceof ItemEntity itemEntity) {
+                    totalItemsRemoved += itemEntity.getItem().getCount();
+                } else if (entity instanceof ExperienceOrb) {
+                    totalXpOrbsRemoved++;
+                }
+                entity.discard();
             }
         }
 
-        CleanupResult result = new CleanupResult(totalEntitiesRemoved, totalItemsRemoved);
+        CleanupResult result = new CleanupResult(totalEntitiesRemoved, totalItemsRemoved, totalXpOrbsRemoved, forceAll);
 
         if (config.broadcastCleanup || manual) {
             broadcastResult(server, result);
         }
 
-        LOGGER.info("[DropCleaner] Очистка завершена: удалено {} сущностей (всего {} предметов)",
-                totalEntitiesRemoved, totalItemsRemoved);
+        LOGGER.info("[DropCleaner] Очистка завершена: удалено {} сущностей (всего {} предметов, {} сфер опыта, force={})",
+                totalEntitiesRemoved, totalItemsRemoved, totalXpOrbsRemoved, forceAll);
 
         return result;
     }
 
     private boolean shouldClean(ItemEntity itemEntity, int minAgeTicks, DropCleanerConfig config) {
-        if (itemEntity.getAge() < minAgeTicks) {
+        // Проверяем возраст только если minAgeTicks > 0 и возраст неотрицательный
+        if (minAgeTicks > 0 && itemEntity.getAge() >= 0 && itemEntity.getAge() < minAgeTicks) {
             return false;
         }
 
@@ -149,17 +170,23 @@ public class DropCleanerHandler {
     }
 
     private void broadcastResult(MinecraftServer server, CleanupResult result) {
-        Component msg = Component.literal("[Очистка] ")
+        var builder = Component.literal("[Очистка] ")
                 .withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD)
                 .append(Component.literal("Очищено предметов на земле: ")
                         .withStyle(ChatFormatting.YELLOW))
                 .append(Component.literal(result.totalItems() + " шт. ")
                         .withStyle(ChatFormatting.GREEN, ChatFormatting.BOLD))
-                .append(Component.literal("(" + result.totalEntities() + " пачек/стаков).")
+                .append(Component.literal("(" + result.totalEntities() + " пачек/стаков" +
+                        (result.totalXpOrbs() > 0 ? ", " + result.totalXpOrbs() + " сфер опыта" : "") +
+                        ").")
                         .withStyle(ChatFormatting.GRAY));
 
-        server.getPlayerList().broadcastSystemMessage(msg, false);
+        if (result.force()) {
+            builder.append(Component.literal(" [FORCE]").withStyle(ChatFormatting.RED, ChatFormatting.BOLD));
+        }
+
+        server.getPlayerList().broadcastSystemMessage(builder, false);
     }
 
-    public record CleanupResult(int totalEntities, int totalItems) {}
+    public record CleanupResult(int totalEntities, int totalItems, int totalXpOrbs, boolean force) {}
 }

@@ -20,10 +20,11 @@ public class DropCleanerConfig {
     private static DropCleanerConfig INSTANCE = new DropCleanerConfig();
 
     public int intervalSeconds = 600; // 10 минут
-    public int minimumItemAgeSeconds = 15; // предметы моложе 15 сек не удалять
+    public int minimumItemAgeSeconds = 0; // 0 = 100% удаление всех лежащих блоков сразу без задержки!
     public List<Integer> warningSeconds = new ArrayList<>(List.of(60, 30, 10, 5, 3, 2, 1));
     public boolean broadcastWarnings = true;
     public boolean broadcastCleanup = true;
+    public boolean cleanExperienceOrbs = false; // Очищать сферы опыта при автоочистке
     public boolean protectNamedItems = true;
     public boolean protectNetherite = true;
     public boolean protectShulkerBoxes = true;
